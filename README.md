@@ -1,6 +1,6 @@
 # Amazon Connect Voice to Voice (V2V) Translation
 
-**BE AWARE:** This code base is a sample project designed to provide a demonstration and a base to start from for specific use cases. It should not be considered Production-ready.
+**BE AWARE:** This code base is a sample project designed to provide a demonstration and a base to start from for specific use cases. It's intent is to enable users to define the appropriate customer experience relevant to their business requirements and customer base by providing options to turn on and off specific experiences or adjust volumes independently. It should not be considered Production-ready.
 
 ## Use-case scenario
 
