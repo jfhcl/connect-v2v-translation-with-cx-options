@@ -87,13 +87,13 @@ These instructions assume you have completed all the prerequisites, and you have
 
 3. Install NPM packages
 
-   - Open your Terminal and navigate to `amazon-connect-v2v-cdk/cdk-stacks`
+   - Open your Terminal and navigate to `connect-v2v-translation-with-cx-options/cdk-stacks`
    - Run `npm run install:all`
    - This script goes through all packages of the solution and installs necessary modules (webapp, cdk-stacks)
 
 4. Configure CDK stacks
 
-   - In your terminal, navigate to `amazon-connect-v2v-cdk/cdk-stacks`
+   - In your terminal, navigate to `connect-v2v-translation-with-cx-options/cdk-stacks`
    - To see the full instructions for the configuration script, run  
      `npm run configure:help`
    - For the purpose of this guide, start the configuration script in interactive mode which will guide you through each input one at a time.
@@ -102,7 +102,7 @@ These instructions assume you have completed all the prerequisites, and you have
      `npm run configure`
 
    - When prompted, provide the following parameters:
-     - `cognito-domain-prefix`: Amazon Cognito hosted UI domain prefix, where users will be redirected during the login process. The domain prefix has to be unique, and you could put your Amazon Connect Instance Alias to it. For example: amazon-connect-v2v-instance-alias
+     - `cognito-domain-prefix`: Amazon Cognito hosted UI domain prefix, where users will be redirected during the login process. The domain prefix has to be unique, and you could put your Amazon Connect Instance Alias to it. For example: connect-v2v-instance-alias
      - `cognito-callback-urls`: Please provide a callback URL for the Amazon Cognito authorization server to call after users are authenticated. For now, set it as `https://localhost:5173`, we will come back to it once our front-end is deployed.
      - `cognito-logout-urls`: Please provide a logout URL where user is to be redirected after logging out. For now, set it as `https://localhost:5173`, we will come back to it once our front-end is deployed.
      - `connect-instance-url`: Amazon Connect instance URL that solution will use. For example: `https://connect-instance-alias.my.connect.aws` (or `https://connect-instance-alias.awsapps.com`)
@@ -115,7 +115,7 @@ These instructions assume you have completed all the prerequisites, and you have
 
 5. Deploy CDK stacks
 
-   - In your terminal, navigate to navigate to `amazon-connect-v2v-cdk/cdk-stacks`
+   - In your terminal, navigate to navigate to `connect-v2v-translation-with-cx-options/cdk-stacks`
    - Run the script: `npm run build:webapp` (remember to complete this step whenever you want to deploy new front end changes)
      - **On Windows devices use `npm run build:webapp:gitbash`**.
    - This script builds frontend applications (webapp)
@@ -146,7 +146,7 @@ These instructions assume you have completed all the prerequisites, and you have
 
 8. Configure Cognito Callback and Logout URLs
 
-   - In your terminal, navigate to `amazon-connect-v2v-cdk/cdk-stacks`
+   - In your terminal, navigate to `connect-v2v-translation-with-cx-options/cdk-stacks`
    - Start the configuration script in interactive mode  
      `npm run configure`
    - The script loads all the existing parameters, and prompts for new parameters to be provided
@@ -155,7 +155,7 @@ These instructions assume you have completed all the prerequisites, and you have
      - `cognito-logout-urls`: Domain of your web application, in this case Amazon CloudFront Distribution URL. For instance: `https://aaaabbbbcccc.cloudfront.net`
      - For the Demo / Development purposes, you can configure both the previously entered `https://localhost:5173` and Amazon CloudFront Distribution URL (comma separated)
    - The script stores the deployment parameters to AWS System Manager Parameter Store
-   - While in `amazon-connect-v2v-cdk/cdk-stacks`, run the deploy script: `npm run cdk:deploy`
+   - While in `connect-v2v-translation-with-cx-options/cdk-stacks`, run the deploy script: `npm run cdk:deploy`
      - **On Windows devices use `npm run cdk:deploy:gitbash`**.
    - Wait for the CDK stacks to be updated
 
@@ -171,16 +171,16 @@ These instructions assume you have completed all the prerequisites, and you have
 
 To be able to make changes in the Webapp and test them locally, without re-deploying the Webapp to Amazon CloudFront, please follow these steps:
 
-1. In your terminal, navigate to `amazon-connect-v2v-cdk/cdk-stacks`
+1. In your terminal, navigate to `connect-v2v-translation-with-cx-options/cdk-stacks`
 2. Synchronise the Webapp config parameters: `npm run sync-config`
 3. This script will download `frontend-config.js` to the `webapp` folder
-4. In your terminal, navigate to `amazon-connect-v2v-cdk/webapp`
+4. In your terminal, navigate to `connect-v2v-translation-with-cx-options/webapp`
 5. To start the Webapp: `npm run dev`
 6. This script starts a local Vite server on port 5173
 7. Open your browser and navigate to `https://localhost:5173`
 8. You can make changes and customize Webapp files, with browser automatically reloading the Webapp
 9. Please make sure you add `https://localhost:5173` as Amazon Connect Approved Origin (see Step 6 in **Solution setup** -> **Configure Amazon Connect Approved Origins**)
-10. Once happy with the changes, navigate to `amazon-connect-v2v-cdk/cdk-stacks` and `npm run build:deploy:all` (On Windows devices use `npm run build:deploy:all:gitbash`)
+10. Once happy with the changes, navigate to `connect-v2v-translation-with-cx-options/cdk-stacks` and `npm run build:deploy:all` (On Windows devices use `npm run build:deploy:all:gitbash`)
 
 ## Clean up
 
