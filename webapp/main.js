@@ -346,7 +346,8 @@ const initCCP = async (onConnectInitialized) => {
       },
       region: CONNECT_CONFIG.connectInstanceRegion,
       softphone: {
-        allowFramedSoftphone: false, //we want the default softphone
+        allowFramedSoftphone: false, //we don't want the default softphone
+        allowFramedVideoCall: true, //allow the agent to add video to the call
         disableRingtone: false,
       },
     });
@@ -521,9 +522,9 @@ async function testMicrophone() {
       const average = sum / bufferLength;
 
       // Update the volume level bar
-      const volumeLevel = document.getElementById("volumeLevel");
+      const volumeBar = document.getElementById("volumeBar");
       const volumePercentage = Math.min((average / 255) * 100, 100);
-      volumeLevel.style.width = `${volumePercentage}%`;
+      volumeBar.style.width = `${volumePercentage}%`;
 
       requestAnimationFrame(updateVolume);
     }
