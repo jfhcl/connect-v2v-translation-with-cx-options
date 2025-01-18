@@ -1,9 +1,11 @@
 // Copyright 2025 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
-import { TranscribeStreamingClient } from "@aws-sdk/client-transcribe-streaming";
+import { StartStreamTranscriptionCommand, TranscribeStreamingClient } from "@aws-sdk/client-transcribe-streaming";
 import { TRANSCRIBE_CONFIG } from "../config";
-import { LOGGER_PREFIX } from "../constants";
+import { LOGGER_PREFIX, TRANSCRIBE_SAMPLE_RATE_AGENT, TRANSCRIBE_SAMPLE_RATE_CUSTOMER } from "../constants";
 import { getValidAwsCredentials, hasValidAwsCredentials } from "../utils/authUtility";
+import { isFunction, isObjectUndefinedNullEmpty, isStringUndefinedNullEmpty } from "../utils/commonUtility";
+import { getTranscribeAudioStream, getTranscribeMicStream } from "../utils/transcribeUtils";
 
 let _amazonTranscribeClientAgent;
 let _amazonTranscribeClientCustomer;
@@ -65,5 +67,53 @@ export async function getAmazonTranscribeClientCustomer() {
   } catch (error) {
     console.error(`${LOGGER_PREFIX} - initializeAwsServices - Error initializing AWS services:`, error);
     throw error;
+  }
+}
+
+export async function startCustomerStreamTranscription(audioStream, languageCode, onTranscribeEvent) {
+  if (isObjectUndefinedNullEmpty(audioStream)) throw new Error("audioStream is required");
+  if (isStringUndefinedNullEmpty(languageCode)) throw new Error("languageCode is required");
+  if (isFunction(onTranscribeEvent)) throw new Error("onTranscribeEvent is required");
+
+  const startStreamTranscriptionCommand = new StartStreamTranscriptionCommand({
+    LanguageCode: languageCode,
+    MediaEncoding: "pcm",
+    MediaSampleRateHertz: TRANSCRIBE_SAMPLE_RATE_CUSTOMER,
+    AudioStream: getTranscribeAudioStream(audioStream),
+  });
+
+  const amazonTranscribeClientCustomer = await getAmazonTranscribeClientCustomer();
+  const startStreamTranscriptionResponse = await amazonTranscribeClientCustomer.send(startStreamTranscriptionCommand);
+
+  for await (const event of startStreamTranscriptionResponse.TranscriptResultStream) {
+    const results = event.TranscriptEvent.Transcript.Results;
+    if (results.length && !results[0]?.IsPartial) {
+      const newTranscript = results[0].Alternatives[0].Transcript;
+      onTranscribeEvent(newTranscript);
+    }
+  }
+}
+
+export async function startAgentStreamTranscription(audioStream, languageCode, onTranscribeEvent) {
+  if (isObjectUndefinedNullEmpty(audioStream)) throw new Error("audioStream is required");
+  if (isStringUndefinedNullEmpty(languageCode)) throw new Error("languageCode is required");
+  if (isFunction(onTranscribeEvent)) throw new Error("onTranscribeEvent is required");
+
+  const startStreamTranscriptionCommand = new StartStreamTranscriptionCommand({
+    LanguageCode: languageCode,
+    MediaEncoding: "pcm",
+    MediaSampleRateHertz: TRANSCRIBE_SAMPLE_RATE_AGENT,
+    AudioStream: getTranscribeMicStream(audioStream),
+  });
+
+  const amazonTranscribeClientAgent = await getAmazonTranscribeClientAgent();
+  const startStreamTranscriptionResponse = await amazonTranscribeClientAgent.send(startStreamTranscriptionCommand);
+
+  for await (const event of startStreamTranscriptionResponse.TranscriptResultStream) {
+    const results = event.TranscriptEvent.Transcript.Results;
+    if (results.length && !results[0]?.IsPartial) {
+      const newTranscript = results[0].Alternatives[0].Transcript;
+      onTranscribeEvent(newTranscript);
+    }
   }
 }

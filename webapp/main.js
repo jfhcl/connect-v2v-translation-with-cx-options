@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT-0
 import "./style.css";
 import "amazon-connect-streams";
-import { StartStreamTranscriptionCommand } from "@aws-sdk/client-transcribe-streaming";
 
 import MicrophoneStream from "microphone-stream";
 
@@ -13,18 +12,16 @@ import {
   LOGGER_PREFIX,
   POLLY_ENGINES,
   POLLY_LANGUAGE_CODES,
-  TRANSCRIBE_SAMPLE_RATE_AGENT,
-  TRANSCRIBE_SAMPLE_RATE_CUSTOMER,
   TRANSCRIBE_STREAMING_LANGUAGES,
 } from "./constants";
 import { getLoginUrl, getValidTokens, handleRedirect, isAuthenticated, logout, setRedirectURI, startTokenRefreshTimer } from "./utils/authUtility";
 import { AudioStreamManager } from "./managers/AudioStreamManager";
 import { SessionTrackManager, TrackType } from "./managers/SessionTrackManager";
-import { createMicrophoneStream, getTranscribeAudioStream, getTranscribeMicStream } from "./utils/transcribeUtils";
+import { createMicrophoneStream } from "./utils/transcribeUtils";
 import { listLanguages, translateText } from "./adapters/translateAdapter";
 import { describeVoices, synthesizeSpeech } from "./adapters/pollyAdapter";
+import { startAgentStreamTranscription, startCustomerStreamTranscription } from "./adapters/transcribeAdapter";
 import { CONNECT_CONFIG } from "./config";
-import { getAmazonTranscribeClientAgent, getAmazonTranscribeClientCustomer } from "./adapters/transcribeAdapter";
 
 let connect = {};
 let CurrentUser = {};
@@ -35,7 +32,7 @@ let ConnectSoftPhoneManager;
 let IsAgentTranscriptionMuted = false;
 
 //Agent Mic Stream used as input for Amazon Transcribe when transcribing agent's voice
-let AmazonTranscribeToCustomerStream;
+let AmazonTranscribeToCustomerAudioStream;
 //Customer Speaker Stream used as input for Amazon Transcribe when transcribing customer's voice
 let AmazonTranscribeFromCustomerAudioStream;
 
@@ -686,33 +683,13 @@ async function customerStartTranscription() {
 
     //getting the remote audio stream from the current RTC session into AmazonTranscribeAudioStream variable
     AmazonTranscribeFromCustomerAudioStream = await captureFromCustomerAudioStream();
-
-    const startStreamTranscriptionCommand = new StartStreamTranscriptionCommand({
-      LanguageCode: customerTranscribeLanguageSelect.value,
-      MediaEncoding: "pcm",
-      MediaSampleRateHertz: TRANSCRIBE_SAMPLE_RATE_CUSTOMER,
-      AudioStream: getTranscribeAudioStream(AmazonTranscribeFromCustomerAudioStream),
-    });
-
-    const amazonTranscribeClientCustomer = await getAmazonTranscribeClientCustomer();
-    const startStreamTranscriptionResponse = await amazonTranscribeClientCustomer.send(startStreamTranscriptionCommand);
+    startCustomerStreamTranscription(AmazonTranscribeFromCustomerAudioStream, customerTranscribeLanguageSelect.value, handleCustomerTranscript);
 
     CCP_V2V.UI.customerStartTranscriptionButton.disabled = true;
     CCP_V2V.UI.customerStopTranscriptionButton.disabled = false;
-
-    for await (const event of startStreamTranscriptionResponse.TranscriptResultStream) {
-      const results = event.TranscriptEvent.Transcript.Results;
-      if (results.length && !results[0]?.IsPartial) {
-        const newTranscript = results[0].Alternatives[0].Transcript;
-        handleCustomerTranscript(newTranscript);
-        //execute CCP_V2V.UI.customerTranscriptionTextOutputDiv.textContent after 100ms
-        setTimeout(() => {
-          CCP_V2V.UI.customerTranscriptionTextOutputDiv.textContent = newTranscript;
-        }, 100);
-      }
-    }
   } catch (error) {
     console.error(`${LOGGER_PREFIX} - customerStartTranscription - Error starting customer transcription:`, error);
+    raiseError(`Error starting customer transcription: ${error}`);
   }
 }
 
@@ -749,42 +726,22 @@ async function agentStartTranscription() {
     }
 
     //getting the local Mic stream into AmazonTranscribeMicStream variable
-    AmazonTranscribeToCustomerStream = await createMicrophoneStream(selectedMic);
-
-    const startStreamTranscriptionCommand = new StartStreamTranscriptionCommand({
-      LanguageCode: agentTranscribeLanguageSelect.value,
-      MediaEncoding: "pcm",
-      MediaSampleRateHertz: TRANSCRIBE_SAMPLE_RATE_AGENT,
-      AudioStream: getTranscribeMicStream(AmazonTranscribeToCustomerStream),
-    });
-
-    const amazonTranscribeClientAgent = await getAmazonTranscribeClientAgent();
-    const startStreamTranscriptionResponse = await amazonTranscribeClientAgent.send(startStreamTranscriptionCommand);
+    AmazonTranscribeToCustomerAudioStream = await createMicrophoneStream(selectedMic);
+    startAgentStreamTranscription(AmazonTranscribeToCustomerAudioStream, agentTranscribeLanguageSelect.value, handleAgentTranscript);
 
     CCP_V2V.UI.agentStartTranscriptionButton.disabled = true;
     CCP_V2V.UI.agentStopTranscriptionButton.disabled = false;
-
-    for await (const event of startStreamTranscriptionResponse.TranscriptResultStream) {
-      const results = event.TranscriptEvent.Transcript.Results;
-      if (results.length && !results[0]?.IsPartial) {
-        const newTranscript = results[0].Alternatives[0].Transcript;
-        handleAgentTranscript(newTranscript);
-        //execute CCP_V2V.UI.agentTranscriptionTextOutputDiv.textContent after 100ms
-        setTimeout(() => {
-          CCP_V2V.UI.agentTranscriptionTextOutputDiv.textContent = newTranscript;
-        }, 100);
-      }
-    }
   } catch (error) {
     console.error(`${LOGGER_PREFIX} - agentStartTranscription - Error starting agent transcription:`, error);
+    raiseError(`Error starting agent transcription: ${error}`);
   }
 }
 
 function agentStopTranscription() {
-  if (AmazonTranscribeToCustomerStream) {
-    AmazonTranscribeToCustomerStream.stop();
-    AmazonTranscribeToCustomerStream.destroy();
-    AmazonTranscribeToCustomerStream = undefined;
+  if (AmazonTranscribeToCustomerAudioStream) {
+    AmazonTranscribeToCustomerAudioStream.stop();
+    AmazonTranscribeToCustomerAudioStream.destroy();
+    AmazonTranscribeToCustomerAudioStream = undefined;
   }
 
   CCP_V2V.UI.agentStartTranscriptionButton.disabled = false;
@@ -792,10 +749,10 @@ function agentStopTranscription() {
 }
 
 function toggleAgentTranscriptionMute() {
-  if (AmazonTranscribeToCustomerStream) {
-    const audioTrack = AmazonTranscribeToCustomerStream.stream.getAudioTracks()[0];
+  if (AmazonTranscribeToCustomerAudioStream) {
+    const audioTrack = AmazonTranscribeToCustomerAudioStream.stream.getAudioTracks()[0];
     if (audioTrack) {
-      //Disable the track in AmazonTranscribeToCustomerStream
+      //Disable the track in AmazonTranscribeToCustomerAudioStream
       audioTrack.enabled = !audioTrack.enabled;
       IsAgentTranscriptionMuted = !audioTrack.enabled;
       //Mute the Mic so it is not streamed to Customer
@@ -857,6 +814,11 @@ async function loadTranslateLanguageCodes() {
 async function handleCustomerTranscript(inputText) {
   if (isStringUndefinedNullEmpty(inputText)) return;
 
+  //update CCP_V2V.UI.customerTranscriptionTextOutputDiv.textContent after 100ms
+  setTimeout(() => {
+    CCP_V2V.UI.customerTranscriptionTextOutputDiv.textContent = inputText;
+  }, 100);
+
   //log transcript request timestamp
   // const timestamp = new Date().toISOString();
   // console.info(
@@ -885,7 +847,7 @@ async function handleCustomerTranscript(inputText) {
     // );
 
     synthesizeCustomerVoice(translatedText);
-    //execute CCP_V2V.UI.customerTranslatedTextOutputDiv.textContent after 100ms
+    //update CCP_V2V.UI.customerTranslatedTextOutputDiv.textContent after 100ms
     setTimeout(() => {
       CCP_V2V.UI.customerTranslatedTextOutputDiv.textContent = translatedText;
     }, 100);
@@ -902,7 +864,7 @@ async function handleAgentTranslateText() {
 
   if (!isStringUndefinedNullEmpty(translatedText)) {
     synthesizeAgentVoice(translatedText);
-    //execute CCP_V2V.UI.agentTranslatedTextOutputDiv.textContent after 100ms
+    //update CCP_V2V.UI.agentTranslatedTextOutputDiv.textContent after 100ms
     setTimeout(() => {
       CCP_V2V.UI.agentTranslatedTextOutputDiv.textContent = translatedText;
     }, 100);
@@ -914,13 +876,18 @@ async function handleAgentTranslateText() {
 async function handleAgentTranscript(inputText) {
   if (isStringUndefinedNullEmpty(inputText)) return;
 
+  //update CCP_V2V.UI.agentTranscriptionTextOutputDiv.textContent after 100ms
+  setTimeout(() => {
+    CCP_V2V.UI.agentTranscriptionTextOutputDiv.textContent = inputText;
+  }, 100);
+
   const fromLanguage = CCP_V2V.UI.agentTranslateFromLanguageSelect.value;
   const toLanguage = CCP_V2V.UI.agentTranslateToLanguageSelect.value;
   const translatedText = await translateText(fromLanguage, toLanguage, inputText);
 
   if (!isStringUndefinedNullEmpty(translatedText)) {
     synthesizeAgentVoice(translatedText);
-    //execute CCP_V2V.UI.agentTranslatedTextOutputDiv.textContent after 100ms
+    //update CCP_V2V.UI.agentTranslatedTextOutputDiv.textContent after 100ms
     setTimeout(() => {
       CCP_V2V.UI.agentTranslatedTextOutputDiv.textContent = translatedText;
     }, 100);
@@ -1058,12 +1025,16 @@ async function synthesizeCustomerVoice(inputText) {
 
   //Play Customer Speech to Agent
   const audioContentArrayBufferPrimary = base64ToArrayBuffer(synthetizedSpeech);
-  ToAgentAudioStreamManager.playAudioBuffer(audioContentArrayBufferPrimary);
+  if (ToAgentAudioStreamManager != null) {
+    ToAgentAudioStreamManager.playAudioBuffer(audioContentArrayBufferPrimary);
+  }
 
   //Play Customer Speech to Customer
   if (CCP_V2V.UI.customerStreamTranslationCheckbox.checked === true) {
     const audioContentArrayBufferSecondary = base64ToArrayBuffer(synthetizedSpeech);
-    ToCustomerAudioStreamManager.playAudioBuffer(audioContentArrayBufferSecondary, CUSTOMER_TRANSLATION_TO_CUSTOMER_VOLUME);
+    if (ToCustomerAudioStreamManager != null) {
+      ToCustomerAudioStreamManager.playAudioBuffer(audioContentArrayBufferSecondary, CUSTOMER_TRANSLATION_TO_CUSTOMER_VOLUME);
+    }
   }
 }
 
@@ -1083,12 +1054,16 @@ async function synthesizeAgentVoice(inputText) {
 
   //Play Agent Speech to Customer
   const audioContentArrayBufferPrimary = base64ToArrayBuffer(synthetizedSpeech);
-  ToCustomerAudioStreamManager.playAudioBuffer(audioContentArrayBufferPrimary);
+  if (ToCustomerAudioStreamManager != null) {
+    ToCustomerAudioStreamManager.playAudioBuffer(audioContentArrayBufferPrimary);
+  }
 
   //Play Agent Speech to Agent
   if (CCP_V2V.UI.agentStreamTranslationCheckbox.checked === true) {
     const audioContentArrayBufferSecondary = base64ToArrayBuffer(synthetizedSpeech);
-    ToAgentAudioStreamManager.playAudioBuffer(audioContentArrayBufferSecondary, AGENT_TRANSLATION_TO_AGENT_VOLUME);
+    if (ToAgentAudioStreamManager != null) {
+      ToAgentAudioStreamManager.playAudioBuffer(audioContentArrayBufferSecondary, AGENT_TRANSLATION_TO_AGENT_VOLUME);
+    }
   }
 }
 

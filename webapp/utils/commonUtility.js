@@ -82,6 +82,27 @@ export function base64ToArrayBuffer(base64) {
 }
 
 /**
+ * Check if object is empty.
+ * @param {object} inputObject - inputObject.
+ * @returns {boolean} - true if object is empty, false otherwise.
+ */
+export function isObjectEmpty(inputObject) {
+  return inputObject != null && Object.keys(inputObject).length === 0 && Object.getPrototypeOf(inputObject) === Object.prototype;
+}
+
+/**
+ * Check if object is undefined, null, empty.
+ * @param {object} inputObject - inputObject.
+ * @returns {boolean} - true if object is undefined, null, empty, false otherwise.
+ */
+export function isObjectUndefinedNullEmpty(inputObject) {
+  if (inputObject == null) return true;
+  if (typeof inputObject !== "object") return true;
+  if (typeof inputObject === "object" && inputObject instanceof Array) return true;
+  return isObjectEmpty(inputObject);
+}
+
+/**
  * Check if string is undefined, null, empty.
  * @param {string} inputString - inputString.
  * @returns {boolean} - true if string is undefined, null, empty, false otherwise.
@@ -91,6 +112,15 @@ export function isStringUndefinedNullEmpty(inputString) {
   if (typeof inputString !== "string") return true;
   if (inputString.trim().length === 0) return true;
   return false;
+}
+
+/**
+ * Check if inputFunction is a function.
+ * @param {function} inputFunction - inputFunction.
+ * @returns {boolean} - true if inputFunction is a function, false otherwise.
+ */
+export function isFunction(inputFunction) {
+  return inputFunction && {}.toString.call(inputFunction) === "[object Function]";
 }
 
 export function isDevEnvironment() {
