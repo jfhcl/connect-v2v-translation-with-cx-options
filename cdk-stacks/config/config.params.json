@@ -9,7 +9,7 @@
     {
       "name": "cognitoDomainPrefix",
       "cliFormat": "cognito-domain-prefix",
-      "description": "Amazon Cognito hosted UI domain prefix, where users will be redirected during the login process. The domain prefix has to be unique, and you could put your Amazon Connect Instance Alias to it. For example: amazon-connect-v2v-instance-alias",
+      "description": "Amazon Cognito hosted UI domain prefix, where users will be redirected during the login process. The domain prefix has to be unique, between 1 and 63 characters long, contains no special characters, and no keywords: aws, amazon, or cognito. You could put your Amazon Connect Instance Alias to it, for example: connect-v2v-instance-alias",
       "required": true
     },
     {

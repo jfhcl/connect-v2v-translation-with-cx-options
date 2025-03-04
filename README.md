@@ -102,7 +102,7 @@ These instructions assume you have completed all the prerequisites, and you have
      `npm run configure`
 
    - When prompted, provide the following parameters:
-     - `cognito-domain-prefix`: Amazon Cognito hosted UI domain prefix, where users will be redirected during the login process. The domain prefix has to be unique, and you could put your Amazon Connect Instance Alias to it. For example: connect-v2v-instance-alias
+     - `cognito-domain-prefix`: Amazon Cognito hosted UI domain prefix, where users will be redirected during the login process. The domain prefix has to be unique, between 1 and 63 characters long, contains no special characters, and no keywords: `aws`, `amazon`, or `cognito` (RegEx pattern: `^[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?$`). You could put your Amazon Connect Instance Alias to it, for example: connect-v2v-instance-alias
      - `cognito-callback-urls`: Please provide a callback URL for the Amazon Cognito authorization server to call after users are authenticated. For now, set it as `https://localhost:5173`, we will come back to it once our front-end is deployed.
      - `cognito-logout-urls`: Please provide a logout URL where user is to be redirected after logging out. For now, set it as `https://localhost:5173`, we will come back to it once our front-end is deployed.
      - `connect-instance-url`: Amazon Connect instance URL that solution will use. For example: `https://connect-instance-alias.my.connect.aws` (or `https://connect-instance-alias.awsapps.com`)
