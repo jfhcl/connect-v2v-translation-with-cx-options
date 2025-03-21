@@ -128,6 +128,16 @@ These instructions assume you have completed all the prerequisites, and you have
      and Amazon CloudFront Distribution URL as `webAppURL` from your Frontend stack.
      **Save these values as you will be using them in the next few steps.**
 
+```
+Outputs:
+AmazonConnectV2VFrontend.webAppBucket = amazonconnectv2v-webappbucket-040504913362-us-west-2
+AmazonConnectV2VFrontend.webAppURL = https://d3sbv7cn682jqw.cloudfront.net
+Stack ARN:
+arn:aws:cloudformation:us-west-2:040504913362:stack/AmazonConnectV2VFrontend/fc0f3fa0-0630-11f0-afae-06b5622a0cbf
+```
+
+
+
 6. Configure Amazon Connect Approved Origins
 
 - Login into your AWS Console
@@ -143,6 +153,10 @@ These instructions assume you have completed all the prerequisites, and you have
      `aws cognito-idp admin-create-user --region <<yourDesiredRegion>> --user-pool-id <<yourUserPoolId>>  --username <<yourEmailAddress>> --user-attributes "Name=name,Value=<<YourName>>" --desired-delivery-mediums EMAIL`
    - You will receive an email, with a temporary password, which you will need in step 7
      **You can repeat this step for each person you want to give access to either now or at a later date.**
+```
+aws cognito-idp admin-create-user --region us-west-2 --user-pool-id us-west-2_XnPiK0hqU --username julianf@hcltech.com --user-attributes "Name=name,Value=Julian Frank" --desired-delivery-mediums EMAIL
+```
+
 
 8. Configure Cognito Callback and Logout URLs
 
